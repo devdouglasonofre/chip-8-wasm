@@ -11,19 +11,6 @@ const VRAM_START_ADDRESS: i32 = 0x6A0;
 const WIDTH: i32 = 64;
 const HEIGHT: i32 = 32;
 
-#[wasm_bindgen]
-extern "C" {
-    #[wasm_bindgen(js_namespace = console)]
-    fn log(s: &str);
-
-    // The `console.log` is quite polymorphic, so we can bind it with multiple
-    // signatures. Note that we need to use `js_name` to ensure we always call
-    // `log` in JS.
-    #[wasm_bindgen(js_namespace = console, js_name = log)]
-    fn log_u32(a: u32);
-
-}
-
 #[wasm_bindgen(start)]
 fn run() -> Result<(), JsValue> {
     
@@ -36,7 +23,7 @@ fn run() -> Result<(), JsValue> {
 
     let mut current_cpu = CPU {
         memory: [0; 0xFFFF],
-        instrucion_pointer: 0,
+        program_counter: 0x200,
         stack: [0; 0xC],
         registers: current_cpu_registers,
         timers: current_cpu_timers,
@@ -61,14 +48,17 @@ fn run() -> Result<(), JsValue> {
     let move_rom_to_ram = Closure::wrap(Box::new(move |data: JsValue| {
         let file_view = Uint8Array::new(&data);
         let file_view_vec = file_view.to_vec();
-
         let mut i: u32 = 0;
 
-        while (i < file_view.length()) {
+        while i < file_view.length() {
             current_cpu.memory[0x200 + i as usize] = file_view_vec[i as usize];
 
             i = i + 1;
         }
+
+        cpu::main(current_cpu);
+
+        print!("Olá!")
     }) as Box<dyn FnMut(_)>);
 
     let  load_rom = Closure::wrap(Box::new(move |event: Event| {
